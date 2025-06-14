@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Dict #se agregó List, Dict
 from datetime import datetime
 
 import numpy as np
@@ -97,7 +97,7 @@ class CNNPredictor(PredictorInterface):
         output_file_name: str = "inference.csv",
         recursive: bool = False,
         allowed_exts={".dcm", ".jpg", ".png"}
-    ) -> list[dict]:
+    ) -> List[Dict]: # se modificó el original era list[dict]
         """
         Predict on all images in a directory and write results to a timestamped CSV.
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Dict
 
 import csv
 import joblib
@@ -91,7 +91,7 @@ class ClassifierPredictor(PredictorInterface):
         output_file_name: str = "inference.csv",
         recursive: bool = False,
         allowed_exts={".dcm", ".jpg", ".jpeg", ".png"}
-    ) -> list[dict]:
+    ) -> List[Dict]:
         """
         Predict on all images in a directory and write results to a timestamped CSV.
 
