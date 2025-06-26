@@ -75,9 +75,9 @@ def extract_features(df: pd.DataFrame, save_name: str = None) -> pd.DataFrame:
     features_df = pd.DataFrame(features_list)
     merged_df = df.merge(features_df, on="full_image_path", how="inner")
 
-    if save_name:
-        output_path = os.path.join(MODELS_OUTPUT_PATH, f"{save_name}_features.parquet")
-        merged_df.to_parquet(output_path, index=False)
-        print(f"Features saved to: {output_path}")
+    #if save_name:
+    #    output_path = os.path.join(MODELS_OUTPUT_PATH, f"{save_name}_features.parquet")
+    #    merged_df.to_parquet(output_path, index=False)
+    #    print(f"Features saved to: {output_path}")
 
     return merged_df

@@ -19,7 +19,16 @@ class BaseClassifier(ABC):
     def __init__(self, config=None):
         self.model = None  # To be defined in subclasses
         self.scaler = StandardScaler()
-        self.feature_columns = ["mean_intensity", "std_intensity", "width", "height"]
+        self.feature_columns = [
+                    "mean_intensity",
+                    "std_intensity",
+                    "width",
+                    "height",
+                    "assessment",
+                    "breast_density",
+                    "subtlety"
+                ]
+
         self.label_column = "pathology"
         self.config = config
         self.label_map = {

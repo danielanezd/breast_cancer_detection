@@ -4,7 +4,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 from utils.dicom import load_image
 from utils.constants import TEXT_CLEANED_IMAGES_ABS_PATH, LABEL_MAP
-
+import os
 
 class CBISDDSMDataset(Dataset):
     def __init__(self, parquet_path, transform=None, label_map=None, images_base_path=None, multi_view=True):

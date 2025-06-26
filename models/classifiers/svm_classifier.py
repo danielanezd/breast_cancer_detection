@@ -1,6 +1,8 @@
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.svm import SVC
 
 from .base_classifier import BaseClassifier
 
@@ -18,30 +20,34 @@ class SVMClassifier(BaseClassifier):
         y = df[self.label_column].map(self.label_map).values
 
         X_scaled = self.scaler.fit_transform(X)
-
+        print(self.feature_columns)
+        print(self.label_column)
+        print(X_scaled,y)
         if self.search_hyperparameters:
             print("Performing GridSearchCV for SVM hyperparameter tuning...")
-
+            cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
             param_grid = {
                 'C': [0.1, 1, 10],
                 'kernel': ['linear', 'rbf', 'poly'],
-                'gamma': ['scale', 'auto']
+                'gamma': ['scale', 'auto'],
+                'class_weight': [None, 'balanced']
             }
-
-            base_svm = SVC(probability=True, random_state=42)
+            
+            svc = SVC(probability=True)
             grid = GridSearchCV(
-                base_svm,
-                param_grid,
-                cv=3,
-                scoring='accuracy',
+                estimator=svc,
+                param_grid=param_grid,
+                scoring='f1_weighted',
+                cv=cv,
                 verbose=1,
                 n_jobs=-1
             )
+
             grid.fit(X_scaled, y)
 
-            print("Best hyperparameters found:")
+            print(" Mejor combinación encontrada:")
             print(grid.best_params_)
-            print(f"Validation Accuracy (CV): {grid.best_score_:.4f}")
+            print(f"F1 ponderado en validación cruzada: {grid.best_score_:.4f}")
 
             self.model = grid.best_estimator_
         else:
