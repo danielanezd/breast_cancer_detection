@@ -2,10 +2,17 @@
 
 Documentation can be found [here](https://deepwiki.com/danielanezd/breast_cancer_detection)
 
+# Prerequisites
+1. An NVIDIA GPU
+2. Java installed and added to your path
+3. CBIS-DDSM dataset pulled in your local file system alongside the Cacl and Mass training and test csv files. Available in The Cancer Imaging Archive (here)[https://www.cancerimagingarchive.net/collection/cbis-ddsm/]
+
 ## Installation
 
-Install all dependencies using pip:
-
+1. Install [pyenv](https://github.com/pyenv/pyenv) 
+2. Install python 3.13 with ```pyenv install 3.13``` and make it local with ```pyenv local 3.13```
+3. Create virtualenv with ```python -m venv .venv```
+4. Install all dependencies using pip:
 ```bash
 pip install -r requirements.txt
 ```

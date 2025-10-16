@@ -29,6 +29,16 @@ LABEL_MAP = {
     "MALIGNANT": 2
 }
 
+FEATURES_LIST = [
+            "mean_intensity",
+            "std_intensity",
+            "width",
+            "height",
+            "assessment",
+            "breast_density",
+            "subtlety"
+        ]
+
 
 # Use these only in notebook
 #SKIP_TRAINING                   = False

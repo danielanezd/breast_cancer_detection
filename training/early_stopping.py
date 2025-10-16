@@ -1,5 +1,5 @@
 class EarlyStopping:
-    def __init__(self, monitor="val_loss", patience=5, mode="min", delta=0.0):
+    def __init__(self, monitor="val_recall", patience=5, mode="max", delta=0.0):
         """
         Args:
             patience (int): Number of epochs to wait after last improvement.
