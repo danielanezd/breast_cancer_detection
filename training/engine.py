@@ -8,11 +8,12 @@ import psutil
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, accuracy_score
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 from tqdm.notebook import tqdm
+
 
 from training.early_stopping import EarlyStopping
 
@@ -47,6 +48,145 @@ def train_epoch(model, loader, criterion, optimizer, device):
 
     return running_loss / len(loader.dataset)
 
+def evaluate_ml(model, X_test, y_test, view_info=None, class_names=None):
+    """
+    Evaluate sklearn-compatible models (SVM, XGBoost, RandomForest, etc.)
+    
+    Args:
+        model: Trained sklearn-compatible model (must have predict and predict_proba)
+        X_test (np.ndarray or pd.DataFrame): Test features, shape (n_samples, n_features)
+        y_test (np.ndarray or pd.Series): Test labels, shape (n_samples,)
+        view_info (list or np.ndarray, optional): List of view names corresponding to each sample.
+                                                   Must have length n_samples.
+        class_names (list, optional): List of class names. If None, uses class_0, class_1, etc.
+        
+    Returns:
+        tuple: (accuracy, avg_loss, recall, precision, f1, auc, 
+                per_view_metrics, per_view_predictions, per_class_metrics)
+            - accuracy (float): Classification accuracy
+            - avg_loss (None): Not applicable for sklearn models
+            - recall (float): Macro-averaged recall score
+            - precision (float): Macro-averaged precision score
+            - f1 (float): Macro-averaged F1 score
+            - auc (float or None): Macro-averaged ROC AUC score if possible, None otherwise
+            - per_view_metrics (dict): Dictionary containing per-view metrics
+            - per_view_predictions (dict): Dictionary containing per-view predictions
+            - per_class_metrics (dict): Dictionary containing per-class metrics
+    """
+    
+    # Get predictions
+    y_pred = model.predict(X_test)
+    
+    # Get probabilities (handle models that don't support it)
+    try:
+        y_prob = model.predict_proba(X_test)
+    except AttributeError:
+        y_prob = None
+    
+    # Convert to numpy if needed
+    y_test = np.array(y_test)
+    y_pred = np.array(y_pred)
+    
+    # Calculate global metrics
+    accuracy = accuracy_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred, average='macro', zero_division=0)
+    precision = precision_score(y_test, y_pred, average='macro', zero_division=0)
+    f1 = f1_score(y_test, y_pred, average='macro', zero_division=0)
+    
+    # AUC calculation
+    if y_prob is not None:
+        try:
+            auc = roc_auc_score(y_test, y_prob, multi_class='ovr', average='macro')
+        except ValueError:
+            auc = None
+    else:
+        auc = None
+    
+    # Loss approximation (sklearn models don't have a direct loss)
+    avg_loss = None
+    
+    # Per-view metrics (if view information provided)
+    per_view_metrics = {}
+    per_view_predictions = {}
+    
+    if view_info is not None:
+        per_view = defaultdict(lambda: {"y_true": [], "y_pred": [], "y_prob": []})
+        
+        for i, view in enumerate(view_info):
+            per_view[view]["y_true"].append(y_test[i])
+            per_view[view]["y_pred"].append(y_pred[i])
+            if y_prob is not None:
+                per_view[view]["y_prob"].append(y_prob[i].tolist())
+        
+        for view, d in per_view.items():
+            if d["y_true"]:
+                view_auc = None
+                if y_prob is not None and d["y_prob"]:
+                    try:
+                        view_auc = roc_auc_score(
+                            d["y_true"], d["y_prob"], 
+                            multi_class='ovr', average='macro'
+                        )
+                    except ValueError:
+                        pass
+                
+                per_view_metrics[view] = {
+                    "recall": recall_score(d["y_true"], d["y_pred"], average='macro', zero_division=0),
+                    "precision": precision_score(d["y_true"], d["y_pred"], average='macro', zero_division=0),
+                    "f1": f1_score(d["y_true"], d["y_pred"], average='macro', zero_division=0),
+                    "accuracy": np.mean(np.array(d["y_true"]) == np.array(d["y_pred"])),
+                    "auc": view_auc
+                }
+                
+                per_view_predictions[view] = {
+                    "y_true": d["y_true"],
+                    "y_pred": d["y_pred"]
+                }
+    
+    # Per-class metrics
+    model_classes = getattr(model, "classes_", None)
+    class_values = list(model_classes) if model_classes is not None else list(np.unique(y_test))
+
+    if class_names is not None and len(class_names) == len(class_values):
+        class_labels = list(class_names)
+    else:
+        class_labels = [str(cls) for cls in class_values]
+
+    per_class_metrics = {}
+    for i, (class_value, label) in enumerate(zip(class_values, class_labels)):
+        y_true_bin = (y_test == class_value).astype(int)
+        y_pred_bin = (y_pred == class_value).astype(int)
+        
+        # Binary AUC for this class
+        class_auc = None
+        if y_prob is not None:
+            try:
+                prob_bin = y_prob[:, i]
+                class_auc = roc_auc_score(y_true_bin, prob_bin)
+            except (ValueError, IndexError):
+                pass
+        
+        acc = np.mean(y_true_bin == y_pred_bin)
+        
+        per_class_metrics[label] = {
+            "recall": recall_score(y_true_bin, y_pred_bin, zero_division=0),
+            "precision": precision_score(y_true_bin, y_pred_bin, zero_division=0),
+            "f1": f1_score(y_true_bin, y_pred_bin, zero_division=0),
+            "accuracy": acc,
+            "auc_roc": class_auc
+        }
+    
+    return (
+        accuracy,
+        avg_loss,
+        recall,
+        precision,
+        f1,
+        auc,
+        per_view_metrics,
+        per_view_predictions,
+        per_class_metrics
+    )
 
 def evaluate_epoch(model, loader, criterion, device):
     """
@@ -146,8 +286,9 @@ def evaluate_epoch(model, loader, criterion, device):
 
         try:
             auc_roc = roc_auc_score(y_true_bin, prob_bin)
-        except ValueError:
-            auc_roc = None
+        except ValueError as e:
+            tqdm.write(f"AUC computation failed: {repr(e)}")
+            raise  # don't skip — stop execution
 
         acc = np.mean(y_true_bin == y_pred_bin)
 

@@ -32,8 +32,5 @@ class CBISDDSMDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
-        if img.shape[0] == 1:
-            img = img.repeat(3, 1, 1)
-
         label = self.label_map[row["pathology"]]
         return img, torch.tensor(label, dtype=torch.long)

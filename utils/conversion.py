@@ -8,6 +8,7 @@ from tqdm import tqdm
 import concurrent.futures
 
 from constants import CLEANED_IMAGES_ABS_PATH, IMAGES_ABS_PATH
+from dicom import load_image
 
 
 def convert_and_save_image(args):
@@ -17,18 +18,9 @@ def convert_and_save_image(args):
         out_path = (output_dir / rel_path).with_suffix(".png")
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if img_path.suffix.lower() == ".dcm":
-            ds = pydicom.dcmread(str(img_path))
-            image_array = ds.pixel_array.astype(np.float32)
-            image_array -= image_array.min()
-            image_array /= (image_array.max() + 1e-5)
-            image_array *= 255.0
-            image_array = image_array.clip(0, 255).astype(np.uint8)
-            image = Image.fromarray(image_array).convert("RGB")
-            image.save(out_path, format="PNG")
-        else:
-            image = Image.open(img_path).convert("RGB")
-            image.save(out_path, format="PNG")
+        # Use LUT-aware loader and preserve 16-bit depth in exported PNGs
+        image = load_image(str(img_path))
+        image.save(out_path, format="PNG")
 
         return (str(img_path), "ok", "")
     except Exception as e:
